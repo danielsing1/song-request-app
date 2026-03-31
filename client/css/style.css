@@ -232,14 +232,14 @@ body::before {
 
 .song-title {
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .song-artist {
-  font-size: 0.82rem;
+  font-size: 1.1rem;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -256,7 +256,7 @@ body::before {
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 1.00rem;
-  padding: 10px 18px;
+  padding: 9px 16px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
