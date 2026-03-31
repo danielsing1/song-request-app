@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GigRequest — Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <h1>GigRequest</h1>
+    <p>Admin — Manage the queue</p>
+    <nav class="header-nav">
+      <a href="/">Songs</a>
+      <a href="/queue">Queue</a>
+      <a href="/admin" class="active">Admin</a>
+    </nav>
+  </header>
+
+  <!-- Login -->
+  <div id="loginView" class="login-box">
+    <h2>Admin Login</h2>
+    <p>Enter the admin password to manage requests.</p>
+    <input type="password" id="pwInput" placeholder="Password" autocomplete="current-password">
+    <button id="btnLogin">Log In</button>
+  </div>
+
+  <!-- Queue management (hidden until login) -->
+  <div id="adminView" style="display:none">
+    <div class="refresh-bar">
+      <span><span class="refresh-dot"></span>Auto-updating every 8s</span>
+      <button class="sort-btn" id="btnRefresh" style="font-size:0.78rem">Refresh now</button>
+    </div>
+    <div class="queue-list" id="queueList">
+      <div class="queue-empty"><span>🎶</span>Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let adminPw = localStorage.getItem("gigrequest_admin_pw") || "";
+  const queueEl = document.getElementById("queueList");
+
+  // ─── Login ────────────────────────────────────────────
+  const loginView = document.getElementById("loginView");
+  const adminView = document.getElementById("adminView");
+  const pwInput = document.getElementById("pwInput");
+
+  function showAdmin() {
+    loginView.style.display = "none";
+    adminView.style.display = "block";
+    loadQueue();
+  }
+
+  // Auto-login if password is saved
+  if (adminPw) {
+    showAdmin();
+  }
+
+  document.getElementById("btnLogin").addEventListener("click", tryLogin);
+  pwInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); });
+
+  async function tryLogin() {
+    const pw = pwInput.value.trim();
+    if (!pw) return;
+
+    try {
+      const res = await fetch("/api/admin/queue?pw=" + encodeURIComponent(pw));
+      if (res.ok) {
+        adminPw = pw;
+        localStorage.setItem("gigrequest_admin_pw", pw);
+        showAdmin();
+      } else {
+        showToast("Wrong password.", true);
+      }
+    } catch {
+      showToast("Connection failed.", true);
+    }
+  }
+
+  // ─── Load queue ───────────────────────────────────────
+  async function loadQueue() {
+    try {
+      const res = await fetch("/api/admin/queue", {
+        headers: { "x-admin-password": adminPw },
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("gigrequest_admin_pw");
+        loginView.style.display = "block";
+        adminView.style.display = "none";
+        return;
+      }
+
+      const items = await res.json();
+
+      if (items.length === 0) {
+        queueEl.innerHTML = `<div class="queue-empty"><span>🎶</span>No requests yet.</div>`;
+        return;
+      }
+
+      queueEl.innerHTML = items.map((item) => {
+        const statusClass = item.status === "now_playing" ? "now-playing" :
+                            item.status === "up_next" ? "up-next" : "";
+        const badge = item.status === "now_playing"
+          ? '<span class="queue-badge now-playing">♪ Now Playing</span>'
+          : item.status === "up_next"
+          ? '<span class="queue-badge up-next">Up Next</span>'
+          : item.status === "played"
+          ? '<span class="queue-badge" style="background:var(--text-dim);color:var(--bg)">Played</span>'
+          : "";
+
+        const time = new Date(item.created_at + "Z").toLocaleTimeString([], {
+          hour: "numeric", minute: "2-digit"
+        });
+
+        return `
+          <div class="queue-item ${statusClass}">
+            <div class="queue-top">
+              ${badge}
+              <div class="song-title">${esc(item.title)}</div>
+            </div>
+            <div class="queue-meta">
+              <span>${esc(item.artist)} · by <strong>${esc(item.requester)}</strong></span>
+              <span>${time}</span>
+            </div>
+            <div class="admin-controls">
+              ${item.status !== "now_playing" ? `<button class="admin-btn play" onclick="setStatus(${item.id},'now_playing')">▶ Now Playing</button>` : ""}
+              ${item.status !== "up_next" ? `<button class="admin-btn next" onclick="setStatus(${item.id},'up_next')">↑ Up Next</button>` : ""}
+              ${item.status !== "played" ? `<button class="admin-btn done" onclick="setStatus(${item.id},'played')">✓ Played</button>` : ""}
+              <button class="admin-btn remove" onclick="removeItem(${item.id})">✕ Remove</button>
+            </div>
+          </div>`;
+      }).join("");
+    } catch (err) {
+      console.error("Admin queue load failed:", err);
+    }
+  }
+
+  // ─── Admin actions ────────────────────────────────────
+  async function setStatus(id, status) {
+    try {
+      await fetch(`/api/admin/request/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": adminPw,
+        },
+        body: JSON.stringify({ status }),
+      });
+      loadQueue();
+    } catch (err) {
+      showToast("Action failed.", true);
+    }
+  }
+
+  async function removeItem(id) {
+    if (!confirm("Remove this request?")) return;
+    try {
+      await fetch(`/api/admin/request/${id}`, {
+        method: "DELETE",
+        headers: { "x-admin-password": adminPw },
+      });
+      loadQueue();
+    } catch (err) {
+      showToast("Remove failed.", true);
+    }
+  }
+
+  // Make functions available globally for inline onclick
+  window.setStatus = setStatus;
+  window.removeItem = removeItem;
+
+  // ─── Toast ────────────────────────────────────────────
+  function showToast(msg, isError = false) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.className = "toast show" + (isError ? " error" : "");
+    setTimeout(() => (toast.className = "toast"), 3000);
+  }
+
+  function esc(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ─── Auto-refresh ─────────────────────────────────────
+  document.getElementById("btnRefresh").addEventListener("click", loadQueue);
+  setInterval(loadQueue, 8000);
+</script>
+</body>
+</html>

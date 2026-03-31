@@ -1,0 +1,19 @@
+{
+  "name": "song-request-app",
+  "version": "1.0.0",
+  "description": "Live gig song request app for audience interaction",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node server/seed.js"
+  },
+  "dependencies": {
+    "sql.js": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "nodemailer": "^6.9.16",
+    "express-rate-limit": "^7.4.1"
+  }
+}

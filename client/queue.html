@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>GigRequest — Queue</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <h1>GigRequest</h1>
+    <p>Live request queue</p>
+    <nav class="header-nav">
+      <a href="/">Songs</a>
+      <a href="/queue" class="active">Queue</a>
+    </nav>
+  </header>
+
+  <div class="refresh-bar">
+    <span><span class="refresh-dot"></span>Auto-updating every 10s</span>
+    <button class="sort-btn" id="btnRefresh" style="font-size:0.78rem">Refresh now</button>
+  </div>
+
+  <div class="queue-list" id="queueList">
+    <div class="queue-empty">
+      <span>🎶</span>
+      Loading queue…
+    </div>
+  </div>
+</div>
+
+<script>
+  const queueEl = document.getElementById("queueList");
+  const btnRefresh = document.getElementById("btnRefresh");
+
+  async function loadQueue() {
+    try {
+      const res = await fetch("/api/queue");
+      const items = await res.json();
+
+      if (items.length === 0) {
+        queueEl.innerHTML = `
+          <div class="queue-empty">
+            <span>🎶</span>
+            No requests yet — be the first!<br>
+            <a href="/" style="color:var(--accent);margin-top:12px;display:inline-block">Browse songs →</a>
+          </div>`;
+        return;
+      }
+
+      queueEl.innerHTML = items.map((item, i) => {
+        const statusClass = item.status === "now_playing" ? "now-playing" :
+                            item.status === "up_next" ? "up-next" : "";
+        const badge = item.status === "now_playing"
+          ? '<span class="queue-badge now-playing">♪ Now Playing</span>'
+          : item.status === "up_next"
+          ? '<span class="queue-badge up-next">Up Next</span>'
+          : "";
+
+        const time = new Date(item.created_at + "Z").toLocaleTimeString([], {
+          hour: "numeric", minute: "2-digit"
+        });
+
+        return `
+          <div class="queue-item ${statusClass}">
+            <div class="queue-top">
+              ${badge}
+              <div class="song-title">${esc(item.title)}</div>
+            </div>
+            <div class="queue-meta">
+              <span>${esc(item.artist)} · requested by <strong>${esc(item.requester)}</strong></span>
+              <span>${time}</span>
+            </div>
+          </div>`;
+      }).join("");
+    } catch (err) {
+      console.error("Queue load failed:", err);
+    }
+  }
+
+  function esc(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  btnRefresh.addEventListener("click", loadQueue);
+
+  // Auto-refresh every 10 seconds
+  loadQueue();
+  setInterval(loadQueue, 10000);
+</script>
+</body>
+</html>
