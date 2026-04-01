@@ -68,22 +68,33 @@ app.post("/api/request", requestLimiter, (req, res) => {
   res.status(201).json({ id: info.lastInsertRowid, message: "Request submitted!" });
 });
 
-// GET /api/queue — audience-visible queue (active only)
+// GET /api/queue — audience-visible queue (active + recently played)
 app.get("/api/queue", (_req, res) => {
   const items = getAll(`
     SELECT r.id, s.title, s.artist, r.requester, r.status, r.created_at
     FROM requests r JOIN songs s ON s.id = r.song_id
     WHERE r.status IN ('now_playing','up_next','queued')
+       OR (r.status = 'played' AND r.created_at > datetime('now', '-6 hours'))
     ORDER BY
       CASE r.status
         WHEN 'now_playing' THEN 0
         WHEN 'up_next'     THEN 1
         WHEN 'queued'      THEN 2
+        WHEN 'played'      THEN 3
       END,
+      CASE WHEN r.status = 'played' THEN r.created_at END DESC,
       r.created_at ASC
   `);
   res.json(items);
 });
+
+// ─── Cleanup: delete played requests older than 6 hours ──
+function cleanupOldPlayed() {
+  try {
+    runSql("DELETE FROM requests WHERE status = 'played' AND created_at < datetime('now', '-6 hours')");
+  } catch (e) { /* ignore */ }
+}
+setInterval(cleanupOldPlayed, 10 * 60 * 1000); // run every 10 minutes
 
 // ─── Admin Routes (simple password auth) ─────────────────
 function adminAuth(req, res, next) {

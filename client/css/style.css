@@ -502,6 +502,22 @@ body::before {
   margin-bottom: 12px;
 }
 
+/* ─── Section divider ──────────────────────────────────── */
+.section-divider {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  padding: 20px 0 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.queue-item.played {
+  opacity: 0.5;
+}
+
 /* ─── Admin controls ───────────────────────────────────── */
 .admin-controls {
   display: flex;
