@@ -1,6 +1,6 @@
 const songs = [
-  { title: "(Everything I Do) I Do It For You", artist: "Bryan Adams" },
-  { title: "#41", artist: "Dave Matthews Band DMB" },
+  { title: "Everything I Do I Do It For You", artist: "Bryan Adams" },
+  { title: "41", artist: "Dave Matthews Band DMB" },
   { title: "1 2 3 4", artist: "Plain White T's" },
   { title: "100 Years", artist: "Five For Fighting" },
   { title: "1234", artist: "Feist" },
