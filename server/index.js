@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, "../client")));
 // ─── Rate limiter for requests (anti-spam) ───────────────
 const requestLimiter = rateLimit({
   windowMs: 2 * 60 * 1000,   // 2-minute window
-  max: 3,                      // max 3 requests per window per IP
+  max: 100,                      // max 3 requests per window per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests — please wait a couple minutes." },
